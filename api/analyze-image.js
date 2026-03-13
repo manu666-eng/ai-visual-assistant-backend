@@ -1,8 +1,8 @@
-import { analyzeImage } from "../services/rekognitionService.js";
-import { generateNavigationGuidance } from "../services/navigationEngine.js";
-import { analyzeSceneWithNova } from "../services/novaVisionService.js";
+const { analyzeImage } = require("../services/rekognitionService");
+const { generateNavigationGuidance } = require("../services/navigationEngine");
+const { analyzeSceneWithNova } = require("../services/novaVisionService");
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
 
-    console.error(error);
+    console.error("Analyze error:", error);
 
     res.json({
       message: "Navigation unavailable. Move slowly."
@@ -44,4 +44,4 @@ export default async function handler(req, res) {
 
   }
 
-}
+};
