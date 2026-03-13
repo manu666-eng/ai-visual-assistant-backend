@@ -1,56 +1,45 @@
-const { RekognitionClient, DetectLabelsCommand } = require("@aws-sdk/client-rekognition");
+const {
+  RekognitionClient,
+  DetectLabelsCommand
+} = require("@aws-sdk/client-rekognition");
 
-const rekognition = new RekognitionClient({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+const client = new RekognitionClient({
+  region: process.env.AWS_REGION
 });
 
-async function analyzeImage(base64Image) {
+async function detectObjects(base64Image) {
 
   const buffer = Buffer.from(base64Image, "base64");
 
   const command = new DetectLabelsCommand({
-    Image: {
-      Bytes: buffer,
-    },
-    MaxLabels: 10,
-    MinConfidence: 70,
+    Image: { Bytes: buffer },
+    MaxLabels: 15,
+    MinConfidence: 70
   });
 
-  const response = await rekognition.send(command);
+  const response = await client.send(command);
 
-  const objects = [];
+  const labels = [];
 
   response.Labels.forEach(label => {
 
-    if (label.Instances && label.Instances.length > 0) {
+    if (label.Instances.length > 0) {
 
       label.Instances.forEach(instance => {
 
-        objects.push({
-          name: label.Name,
-          confidence: label.Confidence,
-          box: instance.BoundingBox
+        labels.push({
+          Name: label.Name,
+          Confidence: instance.Confidence,
+          Geometry: instance
         });
 
-      });
-
-    } else {
-
-      objects.push({
-        name: label.Name,
-        confidence: label.Confidence,
-        box: null
       });
 
     }
 
   });
 
-  return objects;
+  return labels;
 }
 
-module.exports = { analyzeImage };
+module.exports = { detectObjects };

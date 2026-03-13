@@ -1,33 +1,29 @@
-const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
+const {
+  BedrockRuntimeClient,
+  InvokeModelCommand
+} = require("@aws-sdk/client-bedrock-runtime");
 
 const client = new BedrockRuntimeClient({
   region: process.env.AWS_REGION
 });
+
 
 async function analyzeSceneWithNova(objects) {
 
   try {
 
     if (!objects || objects.length === 0) {
-      return "Path looks clear.";
+      return "Path clear.";
     }
 
     const prompt = `
-You are an AI navigation assistant helping a blind person walk safely.
+You are assisting a blind person.
 
-Detected objects:
-${objects.join(", ")}
+Detected objects: ${objects.join(", ")}
 
-Rules:
-- Give one short navigation instruction.
-- Focus on safety.
-- Mention obstacles.
-- Maximum 15 words.
-
-Example responses:
-"Chair ahead, move slightly left."
-"Person in front, slow down."
-"Clear path, move forward."
+Provide ONE short navigation instruction.
+Maximum 12 words.
+Focus on safety.
 `;
 
     const command = new InvokeModelCommand({
@@ -51,15 +47,25 @@ Example responses:
 
     const response = await client.send(command);
 
-    const result = JSON.parse(new TextDecoder().decode(response.body));
+    const result = JSON.parse(
+      new TextDecoder().decode(response.body)
+    );
 
-    return result.output.message.content[0].text;
+    const text =
+      result?.output?.message?.content?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    return text;
 
   } catch (error) {
 
-    console.error("Nova Error:", error);
+    console.error("Nova error:", error);
 
-    return null; // fallback will handle this
+    return null;
+
   }
 
 }
