@@ -1,69 +1,26 @@
-function getDirection(box) {
-
-  if (!box) return "ahead";
-
-  const center = box.Left + box.Width / 2;
-
-  if (center < 0.33) return "left";
-  if (center > 0.66) return "right";
-
-  return "ahead";
-}
-
-function generateNavigationGuidance(objects) {
+export function generateNavigationGuidance(objects) {
 
   if (!objects || objects.length === 0) {
-    return "Path appears clear. Walk forward carefully.";
-  }
 
-  const primary = objects[0];
-
-  const name =
-    (primary.name || primary.Name || "").toLowerCase();
-
-  const position =
-    getDirection(primary.boundingBox || primary.box);
-
-  if (name.includes("person")) {
-
-    return `Person ${position}. Slow down and keep distance`;
+    return
+      "Path appears clear. Walk forward carefully.";
 
   }
 
-  if (
-    name.includes("chair") ||
-    name.includes("table") ||
-    name.includes("furniture")
-  ) {
+  const obj = objects[0];
 
-    if (position === "left")
-      return "Chair on your left. Move slightly right";
+  if (obj.position === "left") {
 
-    if (position === "right")
-      return "Chair on your right. Move slightly left";
-
-    return "Chair ahead. Slow down and adjust direction";
+    return `${obj.label} ${obj.distance} on your left. Move right.`;
 
   }
 
-  if (name.includes("wall")) {
+  if (obj.position === "right") {
 
-    return "Wall ahead. Stop and change direction";
-
-  }
-
-  if (
-    name.includes("laptop") ||
-    name.includes("screen") ||
-    name.includes("monitor")
-  ) {
-
-    return `Object ${position}. Move carefully`;
+    return `${obj.label} ${obj.distance} on your right. Move left.`;
 
   }
 
-  return `Obstacle ${position}. Move carefully`;
+  return `${obj.label} ${obj.distance} ahead. Slow down.`;
 
 }
-
-module.exports = { generateNavigationGuidance };

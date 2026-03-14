@@ -1,65 +1,61 @@
-const {
+import {
   RekognitionClient,
   DetectLabelsCommand
-} = require("@aws-sdk/client-rekognition");
+} from "@aws-sdk/client-rekognition";
 
-const client = new RekognitionClient({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
-});
+const client =
+  new RekognitionClient({
 
-async function analyzeImage(base64Image) {
+    region: process.env.AWS_REGION
 
-  try {
+  });
 
-    const buffer =
-      Buffer.from(base64Image, "base64");
+export async function detectObjects(base64Image) {
 
-    const command =
-      new DetectLabelsCommand({
-        Image: { Bytes: buffer },
-        MaxLabels: 15,
-        MinConfidence: 70
-      });
+  const buffer =
+    Buffer.from(base64Image, "base64");
 
-    const response =
-      await client.send(command);
+  const command =
+    new DetectLabelsCommand({
 
-    const objects = [];
+      Image: { Bytes: buffer },
 
-    if (!response.Labels) return [];
+      MaxLabels: 20,
 
-    response.Labels.forEach(label => {
-
-      if (label.Instances && label.Instances.length > 0) {
-
-        label.Instances.forEach(instance => {
-
-          objects.push({
-            name: label.Name,
-            confidence: instance.Confidence,
-            boundingBox: instance.BoundingBox
-          });
-
-        });
-
-      }
+      MinConfidence: 70
 
     });
 
-    return objects;
+  const response =
+    await client.send(command);
 
-  } catch (error) {
+  const objects = [];
 
-    console.error("Rekognition Error:", error);
+  response.Labels.forEach(label => {
 
-    return [];
+    if (label.Instances.length > 0) {
 
-  }
+      label.Instances.forEach(instance => {
+
+        objects.push({
+
+          label:
+            label.Name.toLowerCase(),
+
+          confidence:
+            instance.Confidence,
+
+          box:
+            instance.BoundingBox
+
+        });
+
+      });
+
+    }
+
+  });
+
+  return objects;
 
 }
-
-module.exports = { analyzeImage };

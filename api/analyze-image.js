@@ -1,8 +1,9 @@
-const { analyzeImage } = require("../services/rekognitionService");
-const { generateNavigationGuidance } = require("../services/navigationEngine");
-const { analyzeSceneWithNova } = require("../services/novaVisionService");
+import { detectObjects } from "../services/rekognitionService.js";
+import { processObjects } from "../services/aiEngine.js";
+import { generateNavigationGuidance } from "../services/navigationEngine.js";
+import { analyzeSceneWithNova } from "../services/novaVisionService.js";
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -12,57 +13,54 @@ module.exports = async function handler(req, res) {
 
   try {
 
-    const { image } = req.body || {};
+    const { image } = req.body;
 
     if (!image) {
-      return res.status(400).json({
+      return res.json({
         message: "No image received"
       });
     }
 
-    console.log("📸 Image received");
+    const detected =
+      await detectObjects(image);
 
-    // Step 1 — Detect objects with Rekognition
-    const objects = await analyzeImage(image);
+    const processed =
+      processObjects(detected);
 
-    console.log("🔎 Objects:", objects);
+    const fallback =
+      generateNavigationGuidance(processed);
 
-    // Step 2 — Rule-based fallback guidance
-    const fallbackGuidance =
-      generateNavigationGuidance(objects);
-
-    // Step 3 — AI reasoning using Nova
-    let novaGuidance = null;
+    let aiResult = null;
 
     try {
 
-      novaGuidance =
-        await analyzeSceneWithNova(objects);
+      aiResult =
+        await analyzeSceneWithNova(processed);
 
-    } catch (novaError) {
+    } catch {}
 
-      console.log("⚠️ Nova failed, using fallback");
+    const guidance =
+      aiResult || fallback;
 
-    }
+    return res.json({
 
-    const finalGuidance =
-      novaGuidance || fallbackGuidance;
+      message: guidance,
 
-    console.log("🧭 Final guidance:", finalGuidance);
+      objects: processed
 
-    return res.status(200).json({
-      message: finalGuidance,
-      objects
     });
 
   } catch (error) {
 
-    console.error("❌ Analyze error:", error);
+    console.error("API ERROR:", error);
 
-    return res.status(500).json({
-      message: "Navigation temporarily unavailable. Move slowly."
+    return res.json({
+
+      message:
+        "Navigation temporarily unavailable. Move slowly."
+
     });
 
   }
 
-};
+}

@@ -1,55 +1,138 @@
-const { handleNavigation } = require("./navigationEngine");
-const { callNova } = require("./novaService");
+const MEMORY = 5;
 
-const USE_NOVA = false; // 🔥 Change to true during hackathon
+let frameBuffer = [];
 
-// Simple object list for rule detection
-const simpleObjects = ["chair", "person", "table", "wall", "stairs", "bike"];
+function getDirection(box) {
 
-// Detect if sentence is complex
-function isComplexQuery(prompt) {
-  const wordCount = prompt.trim().split(" ").length;
+  const center =
+    box.Left + box.Width / 2;
 
-  // If long sentence OR contains question words
-  if (
-    wordCount > 6 ||
-    prompt.toLowerCase().includes("what") ||
-    prompt.toLowerCase().includes("where") ||
-    prompt.toLowerCase().includes("should") ||
-    prompt.toLowerCase().includes("how")
-  ) {
-    return true;
-  }
+  if (center < 0.33)
+    return "left";
 
-  return false;
+  if (center > 0.66)
+    return "right";
+
+  return "center";
+
 }
 
-async function handleAI(prompt) {
-  // 1️⃣ Navigation engine first
-  const navigationResponse = handleNavigation(prompt);
-  if (navigationResponse) {
-    return navigationResponse;
-  }
+function estimateDistance(box) {
 
-  // 2️⃣ Simple rule-based detection
-  const detectedObject = simpleObjects.find(obj =>
-    prompt.toLowerCase().includes(obj)
-  );
+  const size =
+    box.Width * box.Height;
 
-  if (detectedObject && !isComplexQuery(prompt)) {
-    return `Detected ${detectedObject} nearby. Stay alert.`;
-  }
+  if (size > 0.30)
+    return "very close";
 
-  // 3️⃣ Use Nova for complex queries
-  if (USE_NOVA && isComplexQuery(prompt)) {
-    const novaResponse = await callNova(prompt);
-    if (novaResponse) {
-      return novaResponse;
-    }
-  }
+  if (size > 0.15)
+    return "close";
 
-  // 4️⃣ Safe fallback
-  return "Environment unclear. Proceed slowly and remain cautious.";
+  if (size > 0.05)
+    return "medium";
+
+  return "far";
+
 }
 
-module.exports = { handleAI };
+function normalize(objects) {
+
+  return objects.map(obj => ({
+
+    label: obj.label,
+
+    confidence:
+      obj.confidence,
+
+    position:
+      getDirection(obj.box),
+
+    distance:
+      estimateDistance(obj.box)
+
+  }));
+
+}
+
+function mergeFrames(objects) {
+
+  frameBuffer.push(objects);
+
+  if (frameBuffer.length > MEMORY)
+    frameBuffer.shift();
+
+  const merged = {};
+
+  frameBuffer.forEach(frame => {
+
+    frame.forEach(obj => {
+
+      const key =
+        `${obj.label}-${obj.position}`;
+
+      if (!merged[key])
+        merged[key] = obj;
+
+    });
+
+  });
+
+  return Object.values(merged);
+
+}
+
+function prioritize(objects) {
+
+  const riskOrder = [
+
+    "person",
+    "car",
+    "bicycle",
+    "motorcycle",
+    "stairs",
+    "chair",
+    "table",
+    "wall",
+    "door"
+
+  ];
+
+  objects.sort((a, b) => {
+
+    const ai =
+      riskOrder.indexOf(a.label);
+
+    const bi =
+      riskOrder.indexOf(b.label);
+
+    if (ai === -1 && bi === -1)
+      return 0;
+
+    if (ai === -1)
+      return 1;
+
+    if (bi === -1)
+      return -1;
+
+    return ai - bi;
+
+  });
+
+  return objects;
+
+}
+
+export function processObjects(objects) {
+
+  const normalized =
+    normalize(objects);
+
+  const stable =
+    mergeFrames(normalized);
+
+  const prioritized =
+    prioritize(stable);
+
+  return prioritized;
+
+}
