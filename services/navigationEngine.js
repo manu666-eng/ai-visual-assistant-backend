@@ -1,40 +1,68 @@
+function getDirection(box) {
+
+  if (!box) return "ahead";
+
+  const center = box.Left + box.Width / 2;
+
+  if (center < 0.33) return "left";
+  if (center > 0.66) return "right";
+
+  return "ahead";
+}
+
 function generateNavigationGuidance(objects) {
 
   if (!objects || objects.length === 0) {
-    return "Path appears clear.";
+    return "Path appears clear. Walk forward carefully.";
   }
 
-  const lower = objects.map(o => o.toLowerCase());
+  const primary = objects[0];
 
+  const name =
+    (primary.name || primary.Name || "").toLowerCase();
 
-  if (lower.includes("person") || lower.includes("people")) {
-    return "Person detected ahead. Walk slowly.";
+  const position =
+    getDirection(primary.boundingBox || primary.box);
+
+  if (name.includes("person")) {
+
+    return `Person ${position}. Slow down and keep distance`;
+
   }
-
 
   if (
-    lower.includes("chair") ||
-    lower.includes("table") ||
-    lower.includes("furniture")
+    name.includes("chair") ||
+    name.includes("table") ||
+    name.includes("furniture")
   ) {
-    return "Obstacle detected. Move slightly to the side.";
+
+    if (position === "left")
+      return "Chair on your left. Move slightly right";
+
+    if (position === "right")
+      return "Chair on your right. Move slightly left";
+
+    return "Chair ahead. Slow down and adjust direction";
+
   }
 
+  if (name.includes("wall")) {
 
-  if (lower.includes("wall")) {
-    return "Wall ahead. Stop and change direction.";
+    return "Wall ahead. Stop and change direction";
+
   }
-
 
   if (
-    lower.includes("laptop") ||
-    lower.includes("screen") ||
-    lower.includes("monitor")
+    name.includes("laptop") ||
+    name.includes("screen") ||
+    name.includes("monitor")
   ) {
-    return "Object ahead on surface. Proceed carefully.";
+
+    return `Object ${position}. Move carefully`;
+
   }
 
-  return "Objects detected nearby. Move carefully.";
+  return `Obstacle ${position}. Move carefully`;
 
 }
 

@@ -4,42 +4,62 @@ const {
 } = require("@aws-sdk/client-rekognition");
 
 const client = new RekognitionClient({
-  region: process.env.AWS_REGION
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
 });
 
-async function detectObjects(base64Image) {
+async function analyzeImage(base64Image) {
 
-  const buffer = Buffer.from(base64Image, "base64");
+  try {
 
-  const command = new DetectLabelsCommand({
-    Image: { Bytes: buffer },
-    MaxLabels: 15,
-    MinConfidence: 70
-  });
+    const buffer =
+      Buffer.from(base64Image, "base64");
 
-  const response = await client.send(command);
-
-  const labels = [];
-
-  response.Labels.forEach(label => {
-
-    if (label.Instances.length > 0) {
-
-      label.Instances.forEach(instance => {
-
-        labels.push({
-          Name: label.Name,
-          Confidence: instance.Confidence,
-          Geometry: instance
-        });
-
+    const command =
+      new DetectLabelsCommand({
+        Image: { Bytes: buffer },
+        MaxLabels: 15,
+        MinConfidence: 70
       });
 
-    }
+    const response =
+      await client.send(command);
 
-  });
+    const objects = [];
 
-  return labels;
+    if (!response.Labels) return [];
+
+    response.Labels.forEach(label => {
+
+      if (label.Instances && label.Instances.length > 0) {
+
+        label.Instances.forEach(instance => {
+
+          objects.push({
+            name: label.Name,
+            confidence: instance.Confidence,
+            boundingBox: instance.BoundingBox
+          });
+
+        });
+
+      }
+
+    });
+
+    return objects;
+
+  } catch (error) {
+
+    console.error("Rekognition Error:", error);
+
+    return [];
+
+  }
+
 }
 
-module.exports = { detectObjects };
+module.exports = { analyzeImage };
